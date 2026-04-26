@@ -7,9 +7,6 @@
 ![VoiceLens Screenshot](Screenshot_2.png)
 ![VoiceLens Screenshot](Screenshot_1.png)
 
-## Demo
-
-[Watch the full demo](https://your-loom-or-youtube-link)
 
 ---
 
