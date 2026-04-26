@@ -1,11 +1,14 @@
 # VoiceLens — AI Voice Memo Summariser
 > Record a voice memo or call a phone number. VoiceLens transcribes it, extracts structured insights using Claude AI, and reads the summary back to you in a natural voice.
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?style=flat-square&logo=fastapi) ![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python) ![Deepgram](https://img.shields.io/badge/Deepgram-Nova--2-13EF93?style=flat-square) ![Claude](https://img.shields.io/badge/Anthropic-Claude-D97706?style=flat-square) ![ElevenLabs](https://img.shields.io/badge/ElevenLabs-TTS-8B5CF6?style=flat-square) ![Twilio](https://img.shields.io/badge/Twilio-Voice-F22F46?style=flat-square&logo=twilio)
+
+![VoiceLens Screenshot](Screenshot_2.png)
+![VoiceLens Screenshot](Screenshot_1.png)
 ---
 ## What It Does
 VoiceLens is a full voice AI pipeline that turns raw audio into structured, actionable insight in seconds.
 ```
-🎙 Audio Input  →  Deepgram Nova-2  →  Anthropic Claude  →  ElevenLabs TTS  →  ✅ Summary
+Audio Input  →  Deepgram Nova-2  →  Anthropic Claude  →  ElevenLabs TTS  →  ✅ Summary
 ```
 Input options:
 Upload an audio file directly via the web UI (mp3, wav, m4a, ogg, webm, flac)
@@ -65,7 +68,7 @@ cp .env.example .env
 ```bash
 python -m uvicorn main:app --reload --port 8000
 ```
-Open http://localhost:8000 — you're live. 🎉
+Open http://localhost:8000 — you're live. 
 ---
 ## API Keys
 All services have free tiers — total cost for a demo is ~£0-5.
@@ -148,8 +151,8 @@ Deepgram transcription (mocked + integration)
 Claude summarisation with JSON validation
 ElevenLabs TTS output
 Twilio TwiML generation and signature validation
----
-## Tech Stack
+
+## Tech Stack 
 Layer	Technology	Why
 Web framework	FastAPI	Async Python, automatic docs, fast
 Speech-to-text	Deepgram Nova-2	Lower latency than Whisper, native diarisation
@@ -157,7 +160,7 @@ LLM	Anthropic Claude	Reliable structured JSON output
 Text-to-speech	ElevenLabs	Most natural neural TTS available
 Telephony	Twilio	Industry standard for voice/SMS
 HTTP client	httpx	Async-native, production ready
----
+
 ## Design Decisions
 Why Deepgram over Whisper?
 Nova-2 has significantly lower latency and better accuracy on conversational audio, plus native speaker diarisation — all important for real-world voice memos.
@@ -167,13 +170,13 @@ Why async throughout?
 All I/O (file upload, API calls to Deepgram/Claude/ElevenLabs) is async, so the server handles multiple concurrent requests without blocking.
 Why a single-file frontend?
 Zero build step, zero dependencies, instantly portable. The UI is served directly by FastAPI, making the project one-command to run.
----
-🗺 What I'd Add Next
+
+## What I'd Add Next ##
 Database (PostgreSQL) to persist summaries and build a history view
 User authentication so each user sees only their own memos
 Twilio webhook dashboard to view and replay call recordings
 Streaming responses so the UI updates in real time as each pipeline step completes
 Export to Notion/Slack — send summaries directly to productivity tools
----
-## Licence
+
+## Licence ##
 MIT
