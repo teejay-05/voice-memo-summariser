@@ -4,6 +4,9 @@
 
 ![VoiceLens Screenshot](Screenshot_2.png)
 ![VoiceLens Screenshot](Screenshot_1.png)
+
+## Demo
+![VoiceLens Demo](demo.gif)
 ---
 ## What It Does
 VoiceLens is a full voice AI pipeline that turns raw audio into structured, actionable insight in seconds.
