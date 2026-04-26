@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoiceLens — AI Voice Memo Summariser</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface2: #1a1a24;
+      --border: #2a2a38;
+      --accent: #7c6af7;
+      --accent2: #e06c75;
+      --green: #56d98a;
+      --text: #e8e8f0;
+      --muted: #666688;
+      --tag-bg: #1e1e2e;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 60px 60px;
+      opacity: 0.3;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      top: -40%;
+      left: -20%;
+      width: 80vw;
+      height: 80vw;
+      background: radial-gradient(circle, rgba(124,106,247,0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 1;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+
+    /* ── Header ── */
+    header {
+      padding: 56px 0 48px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .logo-text {
+      font-family: 'DM Serif Display', serif;
+      font-size: 24px;
+      letter-spacing: -0.5px;
+    }
+
+    .logo-text span { color: var(--accent); }
+
+    .badge {
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+      align-self: center;
+    }
+
+    h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(36px, 5vw, 56px);
+      line-height: 1.05;
+      letter-spacing: -1.5px;
+      margin-bottom: 16px;
+    }
+
+    h1 em {
+      font-style: italic;
+      color: var(--accent);
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 16px;
+      font-weight: 300;
+      max-width: 480px;
+      line-height: 1.6;
+      margin-bottom: 48px;
+    }
+
+    /* ── Pipeline chips ── */
+    .pipeline {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 48px;
+    }
+
+    .pipe-chip {
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.3px;
+    }
+
+    .pipe-arrow {
+      color: var(--border);
+      font-size: 14px;
+    }
+
+    /* ── Upload zone ── */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 16px;
+      padding: 64px 40px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 32px;
+    }
+
+    .upload-zone::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(124,106,247,0.03), rgba(224,108,117,0.03));
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .upload-zone:hover,
+    .upload-zone.drag-over {
+      border-color: var(--accent);
+    }
+
+    .upload-zone:hover::before,
+    .upload-zone.drag-over::before {
+      opacity: 1;
+    }
+
+    .upload-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      display: block;
+      filter: grayscale(0.3);
+    }
+
+    .upload-label {
+      font-size: 18px;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+
+    .upload-sub {
+      color: var(--muted);
+      font-size: 13px;
+      font-family: 'DM Mono', monospace;
+    }
+
+    #file-input { display: none; }
+
+    /* ── Twilio section ── */
+    .twilio-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 32px;
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .twilio-icon {
+      font-size: 32px;
+      flex-shrink: 0;
+    }
+
+    .twilio-info h3 {
+      font-size: 15px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .twilio-info p {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .phone-number {
+      font-family: 'DM Mono', monospace;
+      font-size: 22px;
+      color: var(--accent);
+      letter-spacing: 1px;
+      margin-left: auto;
+      white-space: nowrap;
+    }
+
+    /* ── Submit button ── */
+    .btn-submit {
+      width: 100%;
+      padding: 18px;
+      background: linear-gradient(135deg, var(--accent), #9b6af7);
+      border: none;
+      border-radius: 12px;
+      color: white;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      letter-spacing: 0.3px;
+      margin-bottom: 48px;
+    }
+
+    .btn-submit:hover { opacity: 0.9; }
+    .btn-submit:active { transform: scale(0.99); }
+    .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Progress ── */
+    .progress-wrap {
+      display: none;
+      margin-bottom: 48px;
+    }
+
+    .progress-wrap.visible { display: block; }
+
+    .progress-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      transition: border-color 0.3s;
+    }
+
+    .step.active { border-color: var(--accent); }
+    .step.done { border-color: var(--green); }
+
+    .step-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--border);
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+
+    .step.active .step-dot {
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    .step.done .step-dot { background: var(--green); }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.4); }
+    }
+
+    .step-label {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .step.active .step-label { color: var(--text); }
+    .step.done .step-label { color: var(--green); }
+
+    .step-service {
+      margin-left: auto;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--border);
+    }
+
+    .step.active .step-service { color: var(--accent); }
+    .step.done .step-service { color: var(--green); }
+
+    /* ── Results ── */
+    .results {
+      display: none;
+      animation: fadeUp 0.5s ease forwards;
+    }
+
+    .results.visible { display: block; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .results-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 28px;
+      letter-spacing: -0.5px;
+    }
+
+    .sentiment-tag {
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .sentiment-positive { background: rgba(86,217,138,0.15); color: var(--green); }
+    .sentiment-neutral { background: rgba(124,106,247,0.15); color: var(--accent); }
+    .sentiment-negative { background: rgba(224,108,117,0.15); color: var(--accent2); }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 28px;
+      margin-bottom: 16px;
+    }
+
+    .card-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .card-body {
+      font-size: 15px;
+      line-height: 1.7;
+      color: var(--text);
+    }
+
+    /* Audio player */
+    .audio-card {
+      background: linear-gradient(135deg, rgba(124,106,247,0.1), rgba(154,106,247,0.05));
+      border-color: rgba(124,106,247,0.3);
+    }
+
+    .audio-card .card-label { color: var(--accent); }
+
+    audio {
+      width: 100%;
+      margin-top: 8px;
+      accent-color: var(--accent);
+    }
+
+    /* Action items */
+    .action-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .action-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .action-list li::before {
+      content: '→';
+      color: var(--accent);
+      font-family: 'DM Mono', monospace;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* Topics */
+    .topics {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .topic-tag {
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-family: 'DM Mono', monospace;
+      color: var(--muted);
+    }
+
+    /* Transcript toggle */
+    .transcript-toggle {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+      width: 100%;
+      text-align: left;
+      margin-bottom: 16px;
+    }
+
+    .transcript-toggle:hover { border-color: var(--accent); color: var(--text); }
+
+    .transcript-body {
+      display: none;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      line-height: 1.8;
+      color: var(--muted);
+      white-space: pre-wrap;
+      margin-bottom: 16px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .transcript-body.open { display: block; }
+
+    /* Error */
+    .error-box {
+      display: none;
+      background: rgba(224,108,117,0.1);
+      border: 1px solid rgba(224,108,117,0.3);
+      border-radius: 10px;
+      padding: 16px 20px;
+      color: var(--accent2);
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+
+    .error-box.visible { display: block; }
+
+    /* Reset btn */
+    .btn-reset {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 24px;
+      display: block;
+    }
+
+    .btn-reset:hover { border-color: var(--text); color: var(--text); }
+
+    /* Footer */
+    footer {
+      margin-top: 80px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: gap;
+      gap: 12px;
+    }
+
+    .footer-stack {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .stack-chip {
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+
+    .footer-copy {
+      color: var(--muted);
+      font-size: 12px;
+      font-family: 'DM Mono', monospace;
+    }
+
+    /* File name preview */
+    .file-preview {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 16px;
+      margin-top: 16px;
+      font-size: 13px;
+    }
+
+    .file-preview.visible { display: flex; }
+    .file-name { font-family: 'DM Mono', monospace; color: var(--accent); }
+    .file-remove { margin-left: auto; cursor: pointer; color: var(--muted); font-size: 18px; line-height: 1; }
+    .file-remove:hover { color: var(--accent2); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">
+        <div class="logo-icon">🎙</div>
+        <div class="logo-text">Voice<span>Lens</span></div>
+      </div>
+      <div class="badge">v1.0.0 · AI Voice Pipeline</div>
+    </header>
+
+    <h1>Turn voice memos<br />into <em>actionable</em> insight.</h1>
+    <p class="subtitle">
+      Upload an audio file or call the number below. VoiceLens transcribes your memo, extracts key insights with Claude AI, and reads the summary back to you in a natural voice.
+    </p>
+
+    <div class="pipeline">
+      <span class="pipe-chip">🎙 Audio Input</span>
+      <span class="pipe-arrow">→</span>
+      <span class="pipe-chip">Deepgram STT</span>
+      <span class="pipe-arrow">→</span>
+      <span class="pipe-chip">Claude AI</span>
+      <span class="pipe-arrow">→</span>
+      <span class="pipe-chip">ElevenLabs TTS</span>
+      <span class="pipe-arrow">→</span>
+      <span class="pipe-chip">✅ Summary</span>
+    </div>
+
+    <!-- Upload zone -->
+    <div class="upload-zone" id="upload-zone">
+      <span class="upload-icon">📂</span>
+      <div class="upload-label">Drop your audio file here</div>
+      <div class="upload-sub">mp3 · wav · m4a · ogg · webm · flac &nbsp;|&nbsp; max 25MB</div>
+      <input type="file" id="file-input" accept="audio/*" />
+    </div>
+
+    <div class="file-preview" id="file-preview">
+      <span>🎵</span>
+      <span class="file-name" id="file-name"></span>
+      <span class="file-remove" id="file-remove">×</span>
+    </div>
+
+    <!-- Twilio -->
+    <div class="twilio-card">
+      <div class="twilio-icon">📞</div>
+      <div class="twilio-info">
+        <h3>Or call your Twilio number</h3>
+        <p>Dial the number, leave a memo after the beep, and hang up. Your summary will be processed automatically.</p>
+      </div>
+      <div class="phone-number" id="phone-display">Set in .env</div>
+    </div>
+
+    <!-- Submit -->
+    <button class="btn-submit" id="submit-btn" disabled>
+      Analyse Memo →
+    </button>
+
+    <!-- Error -->
+    <div class="error-box" id="error-box"></div>
+
+    <!-- Progress -->
+    <div class="progress-wrap" id="progress-wrap">
+      <div class="progress-steps">
+        <div class="step" id="step-upload">
+          <div class="step-dot"></div>
+          <div class="step-label">Uploading audio file</div>
+          <div class="step-service">FastAPI</div>
+        </div>
+        <div class="step" id="step-transcribe">
+          <div class="step-dot"></div>
+          <div class="step-label">Transcribing speech to text</div>
+          <div class="step-service">Deepgram Nova-2</div>
+        </div>
+        <div class="step" id="step-summarise">
+          <div class="step-dot"></div>
+          <div class="step-label">Extracting insights &amp; action items</div>
+          <div class="step-service">Claude AI</div>
+        </div>
+        <div class="step" id="step-tts">
+          <div class="step-dot"></div>
+          <div class="step-label">Generating audio summary</div>
+          <div class="step-service">ElevenLabs</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="results" id="results">
+      <div class="results-header">
+        <div class="results-title">Your Summary</div>
+        <div class="sentiment-tag" id="sentiment-tag"></div>
+      </div>
+
+      <!-- Audio playback -->
+      <div class="card audio-card">
+        <div class="card-label">🔊 Audio Summary — ElevenLabs</div>
+        <audio id="audio-player" controls></audio>
+      </div>
+
+      <!-- Summary text -->
+      <div class="card">
+        <div class="card-label">Summary</div>
+        <div class="card-body" id="summary-text"></div>
+      </div>
+
+      <!-- Action items -->
+      <div class="card" id="actions-card">
+        <div class="card-label">Action Items</div>
+        <ul class="action-list" id="action-list"></ul>
+      </div>
+
+      <!-- Key topics -->
+      <div class="card">
+        <div class="card-label">Key Topics</div>
+        <div class="topics" id="topics-wrap"></div>
+      </div>
+
+      <!-- Transcript -->
+      <button class="transcript-toggle" id="transcript-toggle">
+        ▼ &nbsp; Show full transcript
+      </button>
+      <div class="transcript-body" id="transcript-body"></div>
+
+      <button class="btn-reset" id="reset-btn">← Analyse another memo</button>
+    </div>
+
+    <footer>
+      <div class="footer-stack">
+        <span class="stack-chip">FastAPI</span>
+        <span class="stack-chip">Deepgram</span>
+        <span class="stack-chip">Anthropic Claude</span>
+        <span class="stack-chip">ElevenLabs</span>
+        <span class="stack-chip">Twilio</span>
+      </div>
+      <div class="footer-copy">voicelens · built with python</div>
+    </footer>
+  </div>
+
+  <script>
+    const uploadZone = document.getElementById('upload-zone');
+    const fileInput = document.getElementById('file-input');
+    const filePreview = document.getElementById('file-preview');
+    const fileNameEl = document.getElementById('file-name');
+    const fileRemove = document.getElementById('file-remove');
+    const submitBtn = document.getElementById('submit-btn');
+    const progressWrap = document.getElementById('progress-wrap');
+    const resultsEl = document.getElementById('results');
+    const errorBox = document.getElementById('error-box');
+
+    let selectedFile = null;
+
+    // Click to open file picker
+    uploadZone.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files[0]) setFile(fileInput.files[0]);
+    });
+
+    // Drag and drop
+    uploadZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      uploadZone.classList.add('drag-over');
+    });
+
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+
+    uploadZone.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadZone.classList.remove('drag-over');
+      if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+    });
+
+    function setFile(file) {
+      selectedFile = file;
+      fileNameEl.textContent = file.name;
+      filePreview.classList.add('visible');
+      submitBtn.disabled = false;
+    }
+
+    fileRemove.addEventListener('click', e => {
+      e.stopPropagation();
+      selectedFile = null;
+      fileInput.value = '';
+      filePreview.classList.remove('visible');
+      submitBtn.disabled = true;
+    });
+
+    // Progress step helpers
+    const steps = ['upload', 'transcribe', 'summarise', 'tts'];
+    function setStep(name, state) {
+      const el = document.getElementById(`step-${name}`);
+      el.classList.remove('active', 'done');
+      if (state) el.classList.add(state);
+    }
+
+    function activateStep(name) {
+      const idx = steps.indexOf(name);
+      steps.forEach((s, i) => {
+        if (i < idx) setStep(s, 'done');
+        else if (i === idx) setStep(s, 'active');
+        else setStep(s, null);
+      });
+    }
+
+    function allDone() {
+      steps.forEach(s => setStep(s, 'done'));
+    }
+
+    // Submit
+    submitBtn.addEventListener('click', async () => {
+      if (!selectedFile) return;
+
+      // Reset UI
+      errorBox.classList.remove('visible');
+      resultsEl.classList.remove('visible');
+      progressWrap.classList.add('visible');
+      submitBtn.disabled = true;
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      activateStep('upload');
+
+      // Simulate step progression during the single API call
+      const stepTimings = [
+        { step: 'transcribe', delay: 1200 },
+        { step: 'summarise', delay: 3500 },
+        { step: 'tts', delay: 6000 },
+      ];
+      const timers = stepTimings.map(({ step, delay }) =>
+        setTimeout(() => activateStep(step), delay)
+      );
+
+      try {
+        const res = await fetch('/api/summarise', {
+          method: 'POST',
+          body: formData,
+        });
+
+        timers.forEach(clearTimeout);
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Something went wrong.');
+        }
+
+        const data = await res.json();
+        allDone();
+
+        setTimeout(() => {
+          progressWrap.classList.remove('visible');
+          renderResults(data);
+        }, 600);
+
+      } catch (err) {
+        timers.forEach(clearTimeout);
+        progressWrap.classList.remove('visible');
+        errorBox.textContent = `Error: ${err.message}`;
+        errorBox.classList.add('visible');
+        submitBtn.disabled = false;
+      }
+    });
+
+    function renderResults(data) {
+      // Sentiment
+      const sentimentTag = document.getElementById('sentiment-tag');
+      sentimentTag.textContent = data.sentiment;
+      sentimentTag.className = `sentiment-tag sentiment-${data.sentiment}`;
+
+      // Audio
+      const audio = document.getElementById('audio-player');
+      audio.src = data.audio_url;
+
+      // Summary
+      document.getElementById('summary-text').textContent = data.summary;
+
+      // Action items
+      const actionList = document.getElementById('action-list');
+      actionList.innerHTML = '';
+      const actionsCard = document.getElementById('actions-card');
+      if (data.action_items && data.action_items.length > 0) {
+        data.action_items.forEach(item => {
+          const li = document.createElement('li');
+          li.textContent = item;
+          actionList.appendChild(li);
+        });
+        actionsCard.style.display = '';
+      } else {
+        actionsCard.style.display = 'none';
+      }
+
+      // Topics
+      const topicsWrap = document.getElementById('topics-wrap');
+      topicsWrap.innerHTML = '';
+      (data.key_topics || []).forEach(topic => {
+        const tag = document.createElement('span');
+        tag.className = 'topic-tag';
+        tag.textContent = topic;
+        topicsWrap.appendChild(tag);
+      });
+
+      // Transcript
+      document.getElementById('transcript-body').textContent = data.transcript;
+
+      resultsEl.classList.add('visible');
+    }
+
+    // Transcript toggle
+    document.getElementById('transcript-toggle').addEventListener('click', function () {
+      const body = document.getElementById('transcript-body');
+      const open = body.classList.toggle('open');
+      this.textContent = open ? '▲   Hide transcript' : '▼   Show full transcript';
+    });
+
+    // Reset
+    document.getElementById('reset-btn').addEventListener('click', () => {
+      resultsEl.classList.remove('visible');
+      filePreview.classList.remove('visible');
+      selectedFile = null;
+      fileInput.value = '';
+      submitBtn.disabled = true;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  </script>
+</body>
+</html>

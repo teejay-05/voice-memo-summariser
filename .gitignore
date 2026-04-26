@@ -1,0 +1,12 @@
+﻿.env
+*.env
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+backend/uploads/
+backend/outputs/
+.idea/
+.vscode/
+*.DS_Store
