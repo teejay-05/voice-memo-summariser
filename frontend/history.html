@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoiceLens — Call History</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface2: #1a1a24;
+      --border: #2a2a38;
+      --accent: #7c6af7;
+      --accent2: #e06c75;
+      --green: #56d98a;
+      --text: #e8e8f0;
+      --muted: #666688;
+      --tag-bg: #1e1e2e;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 60px 60px;
+      opacity: 0.3;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 1;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+
+    header {
+      padding: 56px 0 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .logo-text {
+      font-family: 'DM Serif Display', serif;
+      font-size: 24px;
+      letter-spacing: -0.5px;
+      color: var(--text);
+    }
+
+    .logo-text span { color: var(--accent); }
+
+    .nav-link {
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .nav-link:hover { border-color: var(--accent); color: var(--text); }
+
+    h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(32px, 4vw, 48px);
+      letter-spacing: -1px;
+      margin-bottom: 8px;
+    }
+
+    h1 em { font-style: italic; color: var(--accent); }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 15px;
+      margin-bottom: 48px;
+    }
+
+    /* Empty state */
+    .empty {
+      display: none;
+      text-align: center;
+      padding: 80px 40px;
+      border: 2px dashed var(--border);
+      border-radius: 16px;
+      color: var(--muted);
+    }
+
+    .empty.visible { display: block; }
+    .empty-icon { font-size: 48px; margin-bottom: 16px; }
+    .empty h3 { font-size: 18px; color: var(--text); margin-bottom: 8px; }
+
+    /* Loading */
+    .loading {
+      text-align: center;
+      padding: 60px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+    }
+
+    /* Call cards */
+    .calls { display: flex; flex-direction: column; gap: 32px; }
+
+    .call-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      animation: fadeUp 0.4s ease forwards;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .call-header {
+      padding: 20px 28px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .call-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .call-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, rgba(124,106,247,0.2), rgba(224,108,117,0.2));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .call-time {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .call-id {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--border);
+      margin-top: 2px;
+    }
+
+    .sentiment-tag {
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .sentiment-positive { background: rgba(86,217,138,0.15); color: var(--green); }
+    .sentiment-neutral { background: rgba(124,106,247,0.15); color: var(--accent); }
+    .sentiment-negative { background: rgba(224,108,117,0.15); color: var(--accent2); }
+
+    .call-body { padding: 24px 28px; display: flex; flex-direction: column; gap: 16px; }
+
+    .section-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .summary-text {
+      font-size: 15px;
+      line-height: 1.7;
+      color: var(--text);
+    }
+
+    .action-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .action-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text);
+    }
+
+    .action-list li::before {
+      content: '→';
+      color: var(--accent);
+      font-family: 'DM Mono', monospace;
+      flex-shrink: 0;
+    }
+
+    .topics {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .topic-tag {
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-family: 'DM Mono', monospace;
+      color: var(--muted);
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+    }
+
+    .transcript-toggle {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      cursor: pointer;
+      padding: 0;
+      transition: color 0.2s;
+    }
+
+    .transcript-toggle:hover { color: var(--text); }
+
+    .transcript-body {
+      display: none;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      line-height: 1.8;
+      color: var(--muted);
+      white-space: pre-wrap;
+      max-height: 250px;
+      overflow-y: auto;
+      margin-top: 12px;
+    }
+
+    .transcript-body.open { display: block; }
+
+    /* Refresh button */
+    .refresh-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 32px;
+    }
+
+    .refresh-btn:hover { border-color: var(--accent); color: var(--text); }
+
+    footer {
+      margin-top: 80px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .footer-stack { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    .stack-chip {
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+
+    .footer-copy { color: var(--muted); font-size: 12px; font-family: 'DM Mono', monospace; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <a href="/" class="logo">
+        <div class="logo-icon">🎙</div>
+        <div class="logo-text">Voice<span>Lens</span></div>
+      </a>
+      <a href="/" class="nav-link">← Upload a memo</a>
+    </header>
+
+    <h1>Call <em>History</em></h1>
+    <p class="subtitle">All voice memos received via your Twilio number, processed and summarised.</p>
+
+    <button class="refresh-btn" onclick="loadHistory()">↻ &nbsp; Refresh</button>
+
+    <div class="loading" id="loading">Loading call history...</div>
+
+    <div class="empty" id="empty">
+      <div class="empty-icon">📞</div>
+      <h3>No calls yet</h3>
+      <p>Call your Twilio number and leave a voice memo — it'll appear here once processed.</p>
+    </div>
+
+    <div class="calls" id="calls"></div>
+
+    <footer>
+      <div class="footer-stack">
+        <span class="stack-chip">FastAPI</span>
+        <span class="stack-chip">Deepgram</span>
+        <span class="stack-chip">Anthropic Claude</span>
+        <span class="stack-chip">ElevenLabs</span>
+        <span class="stack-chip">Twilio</span>
+      </div>
+      <div class="footer-copy">voicelens · call history</div>
+    </footer>
+  </div>
+
+  <script>
+    function formatDate(isoString) {
+      const d = new Date(isoString);
+      return d.toLocaleString('en-GB', {
+        day: 'numeric', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
+    }
+
+    function renderCall(call, index) {
+      const sentimentClass = `sentiment-${call.sentiment || 'neutral'}`;
+      const sentimentLabel = call.sentiment || 'neutral';
+
+      const actionItems = (call.action_items || []).length > 0
+        ? `<div>
+            <div class="section-label">Action Items</div>
+            <ul class="action-list">
+              ${call.action_items.map(a => `<li>${a}</li>`).join('')}
+            </ul>
+          </div>`
+        : '';
+
+      const topics = (call.key_topics || []).length > 0
+        ? `<div>
+            <div class="section-label">Key Topics</div>
+            <div class="topics">
+              ${call.key_topics.map(t => `<span class="topic-tag">${t}</span>`).join('')}
+            </div>
+          </div>`
+        : '';
+
+      return `
+        <div class="call-card" style="animation-delay: ${index * 0.08}s">
+          <div class="call-header">
+            <div class="call-meta">
+              <div class="call-icon">📞</div>
+              <div>
+                <div class="call-time">${formatDate(call.timestamp)}</div>
+                <div class="call-id">${call.recording_sid}</div>
+              </div>
+            </div>
+            <span class="sentiment-tag ${sentimentClass}">${sentimentLabel}</span>
+          </div>
+          <div class="call-body">
+            <div>
+              <div class="section-label">Summary</div>
+              <div class="summary-text">${call.summary}</div>
+            </div>
+            ${actionItems}
+            ${topics}
+            <div class="divider"></div>
+            <div>
+              <button class="transcript-toggle" onclick="toggleTranscript(this)">
+                ▼ &nbsp; Show full transcript
+              </button>
+              <div class="transcript-body">${call.transcript}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function toggleTranscript(btn) {
+      const body = btn.nextElementSibling;
+      const open = body.classList.toggle('open');
+      btn.textContent = open ? '▲   Hide transcript' : '▼   Show full transcript';
+    }
+
+    async function loadHistory() {
+      const loading = document.getElementById('loading');
+      const empty = document.getElementById('empty');
+      const calls = document.getElementById('calls');
+
+      loading.style.display = 'block';
+      empty.classList.remove('visible');
+      calls.innerHTML = '';
+
+      try {
+        const res = await fetch('/api/history');
+        const data = await res.json();
+
+        loading.style.display = 'none';
+
+        if (!data || data.length === 0) {
+          empty.classList.add('visible');
+          return;
+        }
+
+        calls.innerHTML = data.map((call, i) => renderCall(call, i)).join('');
+      } catch (err) {
+        loading.style.display = 'none';
+        empty.classList.add('visible');
+      }
+    }
+
+    loadHistory();
+  </script>
+</body>
+</html>

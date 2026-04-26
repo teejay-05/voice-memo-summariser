@@ -24,9 +24,6 @@ load_dotenv(dotenv_path=Path(__file__).parent / ".env")
 
 load_dotenv(dotenv_path=Path(__file__).parent / ".env")
 
-# DEBUG - remove later
-import os
-print("DEEPGRAM KEY:", os.getenv("DEEPGRAM_API_KEY"))
 
 app = FastAPI(title="Voice Memo Summariser", version="1.0.0")
 
@@ -163,10 +160,39 @@ async def process_twilio_recording(recording_url: str, recording_sid: str):
     if audio_path.exists():
         audio_path.unlink()
 
+    # Save full results as JSON
+    import json
+    from datetime import datetime
+    result = {
+        "recording_sid": recording_sid,
+        "timestamp": datetime.now().isoformat(),
+        "transcript": transcript,
+        "summary": summary_data["summary"],
+        "action_items": summary_data["action_items"],
+        "sentiment": summary_data["sentiment"],
+        "key_topics": summary_data["key_topics"],
+    }
+    result_path = OUTPUT_DIR / f"{recording_sid}_result.json"
+    with open(result_path, "w") as f:
+        json.dump(result, f, indent=2)
+
     print(f"✅ Processed Twilio recording {recording_sid}")
-    print(f"   Summary: {summary_data['summary'][:100]}...")
+    print(f"   Summary: {summary_data['summary']}")
 
 
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "version": "1.0.0"}
+
+@app.get("/history")
+async def history_page():
+    return FileResponse("../frontend/history.html")
+
+@app.get("/api/history")
+async def get_history():
+    import json
+    results = []
+    for path in sorted(OUTPUT_DIR.glob("*_result.json"), reverse=True):
+        with open(path) as f:
+            results.append(json.load(f))
+    return JSONResponse(results)
